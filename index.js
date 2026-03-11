@@ -3,7 +3,10 @@
  */
 // 若無 convertToSC 函數，提供一個基本的 fallback 以避免 ReferenceError
 const convertToSC = typeof global.convertToSC === 'function' ? global.convertToSC : (str) => str;
-
+const PORT = process.env.PORT || 7860;
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`📡 服務已啟動，監聽埠號：${PORT}`);
+});
 app.get('/search_books', async (req, res) => {
     const { keyword } = req.query;
     if (!keyword) return res.status(400).json({ error: "請提供關鍵字" });
