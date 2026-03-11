@@ -3,75 +3,269 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Golem 電子書跨站搜尋</title>
+    <title>Golem 跨站電子書搜尋整合介面</title>
     <style>
-        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; }
-        .container { max-width: 900px; margin: auto; }
-        .search-box { display: flex; gap: 10px; margin-bottom: 30px; }
-        input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 4px; }
-        button { padding: 12px 24px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; }
-        .source-card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .source-title { border-bottom: 2px solid #007bff; padding-bottom: 5px; margin-bottom: 10px; color: #333; }
-        .book-item { margin: 8px 0; font-size: 14px; }
-        .book-item a { color: #0056b3; text-decoration: none; }
-        .loading { display: none; text-align: center; margin: 20px; font-weight: bold; }
+        :root {
+            --primary-color: #2563eb;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .search-area {
+            display: flex;
+            gap: 10px;
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--primary-color);
+        }
+
+        button {
+            padding: 12px 28px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        button:disabled {
+            background-color: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        /* 讀取動畫 */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: var(--primary-color);
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 結果顯示區 */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .source-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .source-name {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .book-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .book-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .book-item:last-child {
+            border-bottom: none;
+        }
+
+        .book-item a {
+            text-decoration: none;
+            color: var(--text-main);
+            font-weight: 500;
+            display: block;
+            transition: color 0.2s;
+        }
+
+        .book-item a:hover {
+            color: var(--primary-color);
+        }
+
+        .no-result {
+            color: var(--text-muted);
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>📚 Golem 電子書跨站搜尋</h1>
-        <div class="search-box">
-            <input type="text" id="keyword" placeholder="輸入繁體或簡體書名...">
-            <button onclick="doSearch()">搜尋</button>
-        </div>
-        <div id="loading" class="loading">正在跨越時空抓取資料中... (約需 10-15 秒)</div>
-        <div id="results" class="grid"></div>
+
+<div class="container">
+    <header>
+        <h1>📚 Golem 電子書搜尋</h1>
+        <p style="color: var(--text-muted);">一次搜尋 Z-Lib, WeLib, 搬書匠, 莫比圖書</p>
+    </header>
+
+    <div class="search-area">
+        <input type="text" id="keyword" placeholder="請輸入書名或作者 (繁簡皆可)..." onkeypress="if(event.keyCode==13) doSearch()">
+        <button id="searchBtn" onclick="doSearch()">開始搜尋</button>
     </div>
 
-    <script>
-        async function doSearch() {
-            const keyword = document.getElementById('keyword').value;
-            if (!keyword) return;
-            
-            const resultsDiv = document.getElementById('results');
-            const loading = document.getElementById('loading');
-            resultsDiv.innerHTML = '';
-            loading.style.display = 'block';
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <span>正在跨站抓取資料中，請耐心候約 15 秒...</span>
+    </div>
 
-            try {
-                const response = await fetch(`/search_books?keyword=${encodeURIComponent(keyword)}`);
-                const data = await response.json();
-                
-                loading.style.display = 'none';
-                if (response.ok && data.status === 'success') {
-                    if (data.results.length === 0) {
-                        resultsDiv.innerHTML = '<p style="color:gray; width:100%; text-align:center;">無任何搜尋結果</p>';
-                        return;
-                    }
-                    data.results.forEach(source => {
-                        const card = document.createElement('div');
-                        card.className = 'source-card';
-                        let html = `<div class="source-title">${source.source} (${source.books ? source.books.length : 0})</div>`;
-                        
-                        if (!source.books || source.books.length === 0) {
-                            html += `<p style="color:gray">查無結果或該站暫時失效</p>`;
-                        } else {
-                            source.books.forEach(book => {
-                                html += `<div class="book-item">· <a href="${book.url}" target="_blank">${book.title}</a></div>`;
-                            });
-                        }
-                        card.innerHTML = html;
-                        resultsDiv.appendChild(card);
-                    });
-                } else {
-                    resultsDiv.innerHTML = `<div style="color:red; font-weight:bold; width:100%; text-align:center;">搜尋發生錯誤: ${data.error || data.message || '伺服器錯誤'}</div>`;
-                }
-            } catch (e) {
-                loading.style.display = 'none';
-                resultsDiv.innerHTML = `<div style="color:red; font-weight:bold; width:100%; text-align:center;">請求失敗，請檢查網路連線或後端服務是否啟動</div>`;
+    <div id="results" class="results-grid">
+        </div>
+</div>
+
+<script>
+    async function doSearch() {
+        const keywordInput = document.getElementById('keyword');
+        const searchBtn = document.getElementById('searchBtn');
+        const resultsDiv = document.getElementById('results');
+        const loadingDiv = document.getElementById('loading');
+        
+        const keyword = keywordInput.value.trim();
+        if (!keyword) return;
+
+        // UI 狀態切換
+        searchBtn.disabled = true;
+        loadingDiv.style.display = 'block';
+        resultsDiv.innerHTML = '';
+
+        try {
+            // 使用相對路徑呼叫後端 API
+            const response = await fetch(`/search_books?keyword=${encodeURIComponent(keyword)}`);
+            const data = await response.json();
+
+            loadingDiv.style.display = 'none';
+            searchBtn.disabled = false;
+
+            if (data.status === 'success') {
+                renderResults(data.results);
+            } else {
+                resultsDiv.innerHTML = `<p style="color:red">錯誤: ${data.message || '無法連線至後端服務'}</p>`;
             }
+        } catch (error) {
+            loadingDiv.style.display = 'none';
+            searchBtn.disabled = false;
+            resultsDiv.innerHTML = `<p style="color:red">發生異常: ${error.message}</p>`;
         }
-    </script>
+    }
+
+    function renderResults(sources) {
+        const resultsDiv = document.getElementById('results');
+        const sourceNames = ['Z-Library', 'WeLib', '搬書匠', '莫比圖書'];
+
+        sources.forEach((sourceData, index) => {
+            const card = document.createElement('div');
+            card.className = 'source-card';
+            
+            // 處理結果數據 (相容 Promise.allSettled 的結構)
+            const books = Array.isArray(sourceData) ? sourceData : (sourceData.value || []);
+            const name = sourceNames[index] || "未知來源";
+
+            let html = `
+                <div class="source-name">
+                    <span>${name}</span>
+                    <small style="font-size: 0.8rem; color: #94a3b8;">${books.length} 筆</small>
+                </div>
+                <ul class="book-list">
+            `;
+
+            if (books.length === 0) {
+                html += `<li class="no-result">查無結果或該站點目前無法連線</li>`;
+            } else {
+                books.forEach(book => {
+                    html += `
+                        <li class="book-item">
+                            <a href="${book.url}" target="_blank" title="${book.title}">
+                                ${truncate(book.title, 40)}
+                            </a>
+                        </li>
+                    `;
+                });
+            }
+
+            html += `</ul>`;
+            card.innerHTML = html;
+            resultsDiv.appendChild(card);
+        });
+    }
+
+    // 輔助函式：縮短過長的標題
+    function truncate(str, n) {
+        return (str.length > n) ? str.substr(0, n-1) + '...' : str;
+    }
+</script>
+
 </body>
 </html>
