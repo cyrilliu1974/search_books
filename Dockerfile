@@ -33,8 +33,15 @@ RUN git clone https://github.com/FlareSolverr/FlareSolverr.git /usr/src/app/flar
 # 複製其餘的專案檔案
 COPY . .
 
-# 替 start.sh 加上執行權限
-RUN chmod +x start.sh
+# 直接在 Docker 中建立啟動腳本，避免跨平台換行符號與找不到檔案的問題
+RUN echo '#!/bin/bash\n\
+echo "Starting FlareSolverr..."\n\
+python3 /usr/src/app/flaresolverr/flaresolverr.py &\n\
+sleep 5\n\
+echo "FlareSolverr started."\n\
+echo "Starting Node.js server..."\n\
+node index.js\n\
+' > start.sh && chmod +x start.sh
 
 # Hugging Face 建議對所有人開放權限方便執行
 RUN chmod -R 777 /usr/src/app
@@ -42,5 +49,5 @@ RUN chmod -R 777 /usr/src/app
 # Hugging Face Space 需要監聽的 Port
 EXPOSE 7860
 
-# 強制不使用 pptruser，而是用 root 來執行（避免權限與 Xvfb 問題）
+# 強制用 root 來執行（避免權限與 Xvfb 問題）
 CMD [ "./start.sh" ]
