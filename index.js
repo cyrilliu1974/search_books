@@ -53,18 +53,25 @@ app.get('/search_books', async (req, res) => {
         const results = await Promise.allSettled(searchTasks.map(async (task) => {
             const page = await browser.newPage();
             try {
-                await page.goto(task.url, { waitUntil: 'networkidle2', timeout: 15000 });
-                return await page.evaluate((sel, source) => {
+                // 等待 domcontentloaded 比 networkidle2 快，並加上捕獲 HTTP 狀態
+                const response = await page.goto(task.url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+                const statusCode = response ? response.status() : 'N/A';
+                
+                const books = await page.evaluate((sel, source) => {
                     return Array.from(document.querySelectorAll(sel)).slice(0, 5).map(el => ({
                         title: el.innerText.trim().split('\n')[0],
                         url: el.querySelector('a')?.href || '#',
                         source
                     }));
                 }, task.selector, task.name);
+                
+                return { source: task.name, books, debug: `請求成功 (HTTP ${statusCode})，擷取到 ${books.length} 筆` };
+            } catch (err) { 
+                return { source: task.name, books: [], debug: `連線/解析失敗: ${err.message}` };
             } finally { await page.close(); }
         }));
 
-        res.json({ status: "success", results: results.map(r => r.status === 'fulfilled' ? r.value : []) });
+        res.json({ status: "success", results: results.map(r => r.status === 'fulfilled' ? r.value : { source: 'Unknown task', books: [], debug: `Promise rejected: ${r.reason}` }) });
     } catch (error) { res.status(500).json({ error: error.message }); }
 });
 

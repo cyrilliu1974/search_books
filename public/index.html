@@ -230,14 +230,16 @@
             card.className = 'source-card';
             
             // 處理結果數據 (相容 Promise.allSettled 的結構)
-            const books = Array.isArray(sourceData) ? sourceData : (sourceData.value || []);
-            const name = sourceNames[index] || "未知來源";
+            const books = Array.isArray(sourceData) ? sourceData : (sourceData.books || sourceData.value || []);
+            const name = sourceData.source || sourceNames[index] || "未知來源";
+            const debugInfo = sourceData.debug ? `<div style="font-size: 0.8rem; color: #ef4444; background: #fee2e2; padding: 4px 8px; border-radius: 4px; margin-bottom: 10px; word-break: break-all;">[Debug] ${sourceData.debug}</div>` : '';
 
             let html = `
                 <div class="source-name">
                     <span>${name}</span>
                     <small style="font-size: 0.8rem; color: #94a3b8;">${books.length} 筆</small>
                 </div>
+                ${debugInfo}
                 <ul class="book-list">
             `;
 
